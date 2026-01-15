@@ -1,0 +1,115 @@
+﻿@page "/user"
+@inject IJSRuntime JS
+@using System
+
+<div class="container-fluid p-4">
+    <div class="row">
+        <div class="col-12">
+            <h3>🚀 CIF Sales Hub Demo <span class="badge @(HasContext ? "bg-success" : "bg-warning")">@Status</span></h3>
+
+            @if (isLoading)
+            {
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary fs-1" role="status"></div>
+                    <p class="mt-3">Loading CIF context...</p>
+                </div>
+            }
+            else if (recordContext != null)
+            {
+                <div class="card shadow-lg border-0">
+                    <div class="card-header bg-success text-white">
+                        <h5>✅ LIVE CIF CONTEXT (@recordContext.Method)</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <strong>Entity:</strong><br />
+                                <code class="fs-5">@recordContext.Entity</code>
+                            </div>
+                            <div class="col-md-3">
+                                <strong>Record ID:</strong><br />
+                                <code>@recordContext.Id?.Substring(0, 8)...</code>
+                            </div>
+                            <div class="col-md-3">
+                                <strong>Page Type:</strong><br />
+                                <span class="badge bg-info">@recordContext.PageType</span>
+                            </div>
+                            <div class="col-md-3">
+                                <strong>Action:</strong><br />
+                                <button class="btn btn-primary w-100" @onclick="LoadRecord">
+                                    📊 Load Dataverse Data
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="alert alert-warning">
+                    <h5>⚠️ No CIF Context</h5>
+                    <p><strong>Local Test:</strong> <code>?etn=account&id=@Guid.NewGuid().ToString("N").Substring(0, 32)</code></p>
+                    <p><strong>Console Debug:</strong> F12 → <code>window.CIFDemo.testAll()</code></p>
+                </div>
+            }
+
+            <!-- Debug Panel -->
+            <details class="mt-4 p-3 bg-light rounded">
+                <summary><strong>🔧 Console Commands</strong></summary>
+                <div class="row mt-2">
+                    <div class="col-md-4"><code>window.Microsoft.CIFramework</code></div>
+                    <div class="col-md-4"><code>window.CIFDemo.testAll()</code></div>
+                    <div class="col-md-4"><code>await window.getCifRecordContext()</code></div>
+                </div>
+            </details>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool isLoading = true;
+    private RecordContext? recordContext;
+    private bool HasContext => recordContext != null;
+
+    private string Status => isLoading ? "Loading..." : (HasContext ? "LIVE" : "No Context");
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await LoadContextAsync();
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadContextAsync()
+    {
+        try
+        {
+            recordContext = await JS.InvokeAsync<RecordContext?>("getCifRecordContext");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"JS Error: {ex.Message}");
+        }
+    }
+
+    private async Task LoadRecord()
+    {
+        if (recordContext?.Id != null)
+        {
+            // Your Dataverse API call here:
+            // https://org.crm.dynamics.com/api/data/v9.2/{Entity}s({Id})
+            await JS.InvokeVoidAsync("alert", $"Loading {recordContext.Entity}({recordContext.Id}) from Dataverse...");
+        }
+    }
+
+    public class RecordContext
+    {
+        public string? Entity { get; set; }
+        public string? Id { get; set; }
+        public string? Method { get; set; }
+        public string? PageType { get; set; }
+    }
+}
